@@ -4,7 +4,7 @@ import { db , auth } from "@/firebase/admin";
 
 
 import { cookies } from "next/headers";
-import { success } from "zod";
+
 
 const ONE_WEEK = 60 * 60 * 24 * 7;
 
@@ -123,4 +123,36 @@ export async function isAuthenticated(){
     const user = await getCurrentsUser();
 
     return !!user;
+}
+
+
+export async function getInterviewByUserId(userId:string): Promise<Interview[] | null>{
+    const interviews = await db.collection('interviews').where('userId','==',userId).orderBy('createdAt','desc').get();
+
+    const interview = interviews.docs.map((doc)=>({
+        id:doc.id,
+        ...doc.data()   
+    })) as Interview[];
+
+    return interview;
+}
+
+
+export async function getLatestInterview(params:GetLatestInterviewsParams): Promise<Interview[] | null>{
+
+    const {userId,limit=10} = params;
+    const interviews = await db
+    .collection('interviews')
+    .orderBy('createdAt','desc')
+    .where('finalized','==',userId)
+    .where('userId', '!=', userId)
+    .limit(limit)
+    .get()
+
+    const interview = interviews.docs.map((doc)=>({
+        id:doc.id,
+        ...doc.data()   
+    })) as Interview[];
+
+    return interview;
 }

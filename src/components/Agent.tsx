@@ -1,7 +1,10 @@
+"use client"
 import Image from 'next/image'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import {vapi} from "@/lib/vapi.sdk"
 
 enum CallStatus {
     INACTIVE = 'INACTIVE',
@@ -10,14 +13,98 @@ enum CallStatus {
     FINISHED = 'FINISHED'
 }
 
-const Agent = ({userName}:AgentProps) => {
-    const isSpeaking = true;
-    const callStatus = CallStatus.FINISHED
-    const message = [
-        'what is your name ?',
-        'my name is samir rain , nice to meet you !'
-    ]
-    const lastmessage = message[message.length - 1]
+interface SavedMessage {
+  role: 'user' | 'system' | 'assistant';
+  content: string;
+
+}
+
+const Agent = ({userName,userId,type}:AgentProps) => {
+  const router = useRouter();
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [callStatus, setcallStatus] = useState<CallStatus>(CallStatus.INACTIVE)
+const [messages, setmessages] = useState<SavedMessage[]>([]);
+
+
+useEffect(()=>{
+  const onCallStart = ()=> setcallStatus(CallStatus.ACTIVE);
+  const onCallEnd = ()=>setcallStatus(CallStatus.FINISHED);
+
+  const  onMessage = (message: Message)=>{
+    if(message.type === 'transcript' && message.transcriptType === 'final'){
+const newMessage = {
+  role: message.role , content : message.transcript
+}
+console.log(newMessage)
+setmessages((prev)=>[...prev,newMessage])
+    }
+  }
+
+  const onSpeechStart = ()=>setIsSpeaking(true);
+  const onSpeechEnd = ()=>setIsSpeaking(false);
+
+  const onError = (error : Error)=>console.log("error", error)
+
+  vapi.on('call-start', onCallStart)
+  vapi.on('call-end', onCallEnd)
+  vapi.on('message', onMessage)
+  vapi.on('call-start', onCallStart)
+  vapi.on('speech-start', onSpeechStart)
+  vapi.on('speech-end', onSpeechEnd)
+  vapi.on('error',onError)
+
+  return ()=>{
+    vapi.off('call-start', onCallStart)
+    vapi.off('call-end', onCallEnd)
+    vapi.off('message', onMessage)
+    vapi.off('call-start', onCallStart)
+    vapi.off('speech-start', onSpeechStart)
+    vapi.off('speech-end', onSpeechEnd)
+    vapi.off('error',onError)
+  }
+},[])
+
+useEffect(()=>{
+if(callStatus === CallStatus.FINISHED) router.push('/');
+
+},
+[messages,callStatus,type,userId])
+
+
+const handleCall = async ()=>{
+  setcallStatus(CallStatus.CONNECTING);
+
+ try {
+ const data = await vapi.start(
+  undefined,
+  undefined,
+  undefined,
+  process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
+    
+   
+    variableValues:{
+      username:userName,
+      userid:userId,
+      
+    }
+  })
+  console.log(data)
+ } catch (error) {
+  console.log(error)
+ }
+}
+
+const handleDisconnect = async ()=>{
+  setcallStatus(CallStatus.FINISHED);
+
+  vapi.stop();
+}
+
+
+    const lastestmessage = messages[messages.length - 1] ?.content;
+
+    const isCallInactiveOrFinished = callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED;
+
   return (
   <>
   <div className="call-view">
@@ -37,11 +124,11 @@ const Agent = ({userName}:AgentProps) => {
     </div>
   </div>
 
-  {message.length > 0 && (
+  {messages.length > 0 && (
     <div className="transcript-border">
       <div className="transcript">
-        <p key={lastmessage} className={cn("transition-opacity duration-500 opacity-0", 'animate-fadeIn opacity-100')}>
-          {lastmessage}
+        <p key={lastestmessage} className={cn("transition-opacity duration-500 opacity-0", 'animate-fadeIn opacity-100')}>
+          {lastestmessage}
         </p>
       </div>
     </div>
@@ -50,18 +137,22 @@ const Agent = ({userName}:AgentProps) => {
   <div className="w-full flex justify-center">
     {callStatus !== 'ACTIVE' ?
      (
-        <button className='relative btn-call'>
-            <span className={cn('absolute animate-ping rounded-full opacity-75', callStatus !== 'CONNECTING' & 'hidden')}/>
+        <button className='relative btn-call' 
+        onClick={handleCall}
+        >
+            <span className={cn('absolute animate-ping rounded-full opacity-75', callStatus !== 'CONNECTING' && 'hidden')}/>
                
                <span>
-               {callStatus  ===  'INACTIVE' || callStatus === 'FINISHED' ? 'call' : "....."}
+               {isCallInactiveOrFinished ? 'call' : "....."}
                </span>
             
         </button>
      )
       :
       (
-        <button className='btn-disconnect'>End</button>
+        <button className='btn-disconnect' 
+        onClick={handleDisconnect}
+        >End</button>
       )
       }
   </div>
