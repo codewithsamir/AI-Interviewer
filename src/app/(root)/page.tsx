@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import Link from 'next/link'
-import React, { Fragment } from 'react'
-import { dummyInterviews } from '../../constants'
+
+// import { dummyInterviews } from '../../constants'
 import InterviewCard from '@/components/InterviewCard'
-import { getCurrentsUser, getInterviewByUserId, getLatestInterview } from '@/lib/actions/auth.action'
+import { getCurrentsUser } from '@/lib/actions/auth.action'
+import { getInterviewByUserId, getLatestInterview } from '@/lib/actions/general.action'
 
 const page =async () => {
 

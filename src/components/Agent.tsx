@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import {vapi} from "@/lib/vapi.sdk"
+import { interviewer } from '@/constants';
 
 enum CallStatus {
     INACTIVE = 'INACTIVE',
@@ -19,7 +20,7 @@ interface SavedMessage {
 
 }
 
-const Agent = ({userName,userId,type}:AgentProps) => {
+const Agent = ({userName,userId,type,interviewId,questions}:AgentProps) => {
   const router = useRouter();
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [callStatus, setcallStatus] = useState<CallStatus>(CallStatus.INACTIVE)
@@ -64,7 +65,31 @@ setmessages((prev)=>[...prev,newMessage])
   }
 },[])
 
+const handleGenerateFeedback = async(messages:SavedMessage[])=>{
+  console.log('generate feedback here.');
+
+
+  //Todo: create a server action that generates feedback
+  const {success, id} = {
+    success:true,
+    id:'feedback-id'
+  }
+  if(success && id){
+    router.push(`/interview/${interviewId}/feedback`)
+  }else{
+    console.log('error saving feedback')
+    router.push('/')
+  }
+}
+
 useEffect(()=>{
+  if(callStatus === CallStatus.FINISHED){
+    if(type === 'generate'){
+      router.push("/")
+    }else{
+      handleGenerateFeedback(messages);
+    }
+  }
 if(callStatus === CallStatus.FINISHED) router.push('/');
 
 },
@@ -74,8 +99,9 @@ if(callStatus === CallStatus.FINISHED) router.push('/');
 const handleCall = async ()=>{
   setcallStatus(CallStatus.CONNECTING);
 
- try {
- const data = await vapi.start(
+  if(type === 'generate'){
+
+ await vapi.start(
   undefined,
   undefined,
   undefined,
@@ -88,10 +114,22 @@ const handleCall = async ()=>{
       
     }
   })
-  console.log(data)
- } catch (error) {
-  console.log(error)
- }
+
+  }else{
+    let formatedquestions = '';
+
+    if(questions){
+      formatedquestions = questions.map((question)=>`-${question}`
+      ).join('\n')
+
+    }
+    await vapi.start(interviewer,{
+      variableValues:{
+        questions:formatedquestions
+      }
+    })}
+
+ 
 }
 
 const handleDisconnect = async ()=>{
@@ -159,5 +197,6 @@ const handleDisconnect = async ()=>{
   </>
   )
 }
+
 
 export default Agent
