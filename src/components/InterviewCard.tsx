@@ -5,9 +5,10 @@ import React from 'react'
 import { Button } from './ui/button';
 import Link from 'next/link';
 import DisplayTechIcons from './DisplayTechIcons';
+import { getFeebbackByInterviewId } from '@/lib/actions/general.action';
 
-const InterviewCard = ({id,role,type,techstack,createdAt}:InterviewCardProps) => {
-  const feedback = null as Feedback | null;
+const InterviewCard = async ({id,role,userId,type,techstack,createdAt}:InterviewCardProps) => {
+  const feedback =userId && id  ? await getFeebbackByInterviewId({interviewId:id, userId}) : null;
   
   const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
 
