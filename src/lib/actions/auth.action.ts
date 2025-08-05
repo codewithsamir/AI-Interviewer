@@ -112,7 +112,7 @@ try {
 
     } as User;
 } catch (error) {
-    console.error(error);
+    // console.error(error);
     return null;
     
 }
